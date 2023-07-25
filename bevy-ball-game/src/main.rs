@@ -17,8 +17,10 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .init_resource::<Score>()
+        .init_resource::<HighScores>()
         .init_resource::<StarSpawnTimer>()
         .init_resource::<EnemySpawnTimer>()
+        .add_event::<GameOver>()
         .add_systems(Startup, spawn_camera)
         .add_systems(Startup, spawn_player)
         .add_systems(Startup, spawn_enemies)
@@ -36,6 +38,9 @@ fn main() {
         .add_systems(Update, tick_enemy_spawn_timer)
         .add_systems(Update, spawn_enemies_over_time)
         .add_systems(Update, exit_game)
+        .add_systems(Update, handle_game_over)
+        .add_systems(Update, update_high_scores)
+        .add_systems(Update, high_scores_updated)
         .run();
 }
 
@@ -56,8 +61,19 @@ pub struct Score {
 }
 
 impl Default for Score {
-    fn default() -> Score {
+    fn default() -> Self {
         Score { value: 0 }
+    }
+}
+
+#[derive(Resource, Debug)]
+pub struct HighScores {
+    pub scores: Vec<(String, u32)>,
+}
+
+impl Default for HighScores {
+    fn default() -> Self {
+        HighScores { scores: Vec::new() }
     }
 }
 
@@ -67,7 +83,7 @@ pub struct StarSpawnTimer {
 }
 
 impl Default for StarSpawnTimer {
-    fn default() -> StarSpawnTimer {
+    fn default() -> Self {
         StarSpawnTimer {
             timer: Timer::from_seconds(STAR_SPAWN_TIME, TimerMode::Repeating),
         }
@@ -80,11 +96,16 @@ pub struct EnemySpawnTimer {
 }
 
 impl Default for EnemySpawnTimer {
-    fn default() -> EnemySpawnTimer {
+    fn default() -> Self {
         EnemySpawnTimer {
             timer: Timer::from_seconds(ENEMY_SPAWN_TIME, TimerMode::Repeating),
         }
     }
+}
+
+#[derive(Event)]
+pub struct GameOver {
+    pub score: u32,
 }
 
 pub fn spawn_player(
@@ -297,9 +318,11 @@ fn confine_enemy_movement(
 
 pub fn enemy_hit_player(
     mut commands: Commands,
+    mut game_over_event_writer: EventWriter<GameOver>,
     mut player_query: Query<(Entity, &Transform), With<Player>>,
     enemy_query: Query<&Transform, With<Enemy>>,
     asset_server: Res<AssetServer>,
+    score: Res<Score>,
 ) {
     if let Ok((player_entity, player_transform)) = player_query.get_single_mut() {
         for enemy_transform in enemy_query.iter() {
@@ -315,6 +338,7 @@ pub fn enemy_hit_player(
                     ..default()
                 });
                 commands.entity(player_entity).despawn();
+                game_over_event_writer.send(GameOver { score: score.value });
             }
         }
     }
@@ -411,5 +435,26 @@ pub fn exit_game(
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         app_exit_event_writter.send(AppExit);
+    }
+}
+
+pub fn handle_game_over(mut game_over_event_reader: EventReader<GameOver>) {
+    for event in game_over_event_reader.iter() {
+        println!("Final score: {}", event.score.to_string());
+    }
+}
+
+pub fn update_high_scores(
+    mut game_over_event_reader: EventReader<GameOver>,
+    mut high_scores: ResMut<HighScores>,
+) {
+    for event in game_over_event_reader.iter() {
+        high_scores.scores.push(("Player".to_string(), event.score));
+    }
+}
+
+pub fn high_scores_updated(high_scores: Res<HighScores>) {
+    if high_scores.is_changed() {
+        println!("High scores {:?}", high_scores);
     }
 }
