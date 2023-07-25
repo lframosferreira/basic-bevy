@@ -4,8 +4,8 @@ pub mod components;
 pub mod resources;
 mod systems;
 
-use systems::*;
-use resources::*;
+use self::systems::*;
+use self::resources::*;
 
 pub const NUMBER_OF_STARS: usize = 10;
 pub const STAR_SIZE: f32 = 30.0;

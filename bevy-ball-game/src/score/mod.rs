@@ -3,8 +3,8 @@ use bevy::prelude::*;
 pub mod resources;
 mod systems;
 
-use resources::*;
-use systems::*;
+use self::resources::*;
+use self::systems::*;
 
 pub struct ScorePlugin;
 

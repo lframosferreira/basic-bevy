@@ -3,20 +3,35 @@ use bevy::prelude::*;
 pub mod components;
 mod systems;
 
-use systems::*;
+use self::systems::*;
 
 pub const PLAYER_SPEED: f32 = 500.0; // player movement speed
 pub const PLAYER_SIZE: f32 = 64.0; // player sprite size
+
+#[derive(SystemSet, Hash, Debug, Eq, PartialEq, Clone)]
+
+pub enum PlayerSystemSet {
+    Movement,
+    Confinement,
+}
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app
+        app.configure_set(
+            Update,
+            PlayerSystemSet::Movement.before(PlayerSystemSet::Confinement),
+        )
         .add_systems(Startup, spawn_player)
-        .add_systems(Update, player_movement)
-        .add_systems(Update, confine_player_movement)
-        .add_systems(Update, enemy_hit_player)
-        .add_systems(Update, player_hit_star);
+        .add_systems(
+            Update,
+            (
+                player_movement.in_set(PlayerSystemSet::Movement),
+                confine_player_movement.in_set(PlayerSystemSet::Confinement),
+                enemy_hit_player,
+                player_hit_star,
+            ),
+        );
     }
 }
