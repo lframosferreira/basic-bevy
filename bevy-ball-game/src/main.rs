@@ -1,14 +1,17 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+use rand::prelude::*;
 
 pub const PLAYER_SPEED: f32 = 500.0; // player movement speed
 pub const PLAYER_SIZE: f32 = 64.0; // player sprite size
+pub const NUMBER_OF_ENEMIES: usize = 4;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, spawn_camera)
         .add_systems(Startup, spawn_player)
+        .add_systems(Startup, spawn_enemies)
         .add_systems(Update, player_movement)
         .add_systems(Update, confine_player_movement)
         .run();
@@ -16,6 +19,9 @@ fn main() {
 
 #[derive(Component)]
 pub struct Player {}
+
+#[derive(Component)]
+pub struct Enemy {}
 
 pub fn spawn_player(
     mut commands: Commands,
@@ -40,6 +46,28 @@ pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<Pr
         transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 1.0),
         ..default()
     });
+}
+
+pub fn spawn_enemies(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+) {
+    let window: &Window = window_query.get_single().unwrap();
+
+    for _ in 0..NUMBER_OF_ENEMIES {
+        let random_x: f32 = random::<f32>() * window.width();
+        let random_y: f32 = random::<f32>() * window.height();
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(random_x, random_y, 0.0),
+                texture: asset_server.load("sprites/ball_red_large.png"),
+                ..default()
+            },
+            Enemy {},
+        ));
+    }
 }
 
 pub fn player_movement(
@@ -76,7 +104,7 @@ fn confine_player_movement(
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     if let Ok(mut player_transform) = player_query.get_single_mut() {
-        let window = window_query.get_single().unwrap();
+        let window: &Window = window_query.get_single().unwrap();
         let half_player_size: f32 = PLAYER_SIZE / 2.0;
         let x_min: f32 = half_player_size;
         let x_max: f32 = window.width() - half_player_size;
