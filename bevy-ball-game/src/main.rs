@@ -19,6 +19,7 @@ fn main() {
         .add_systems(Update, enemy_movement)
         .add_systems(Update, update_enemy_direction)
         .add_systems(Update, confine_enemy_movement)
+        .add_systems(Update, enemy_hit_player)
         .run();
 }
 
@@ -213,5 +214,30 @@ fn confine_enemy_movement(
             translation.y = y_max;
         }
         transform.translation = translation;
+    }
+}
+
+pub fn enemy_hit_player(
+    mut commands: Commands,
+    mut player_query: Query<(Entity, &Transform), With<Player>>,
+    enemy_query: Query<&Transform, With<Enemy>>,
+    asset_server: Res<AssetServer>,
+) {
+    if let Ok((player_entity, player_transform)) = player_query.get_single_mut() {
+        for enemy_transform in enemy_query.iter() {
+            let distance: f32 = player_transform
+                .translation
+                .distance(enemy_transform.translation);
+            let player_radius: f32 = PLAYER_SIZE / 2.0;
+            let enemy_radius: f32 = ENEMY_SIZE / 2.0;
+            if distance < player_radius + enemy_radius {
+                println!("Game over");
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("audio/explosionCrunch_000.ogg"),
+                    ..default()
+                });
+                commands.entity(player_entity).despawn();
+            }
+        }
     }
 }
