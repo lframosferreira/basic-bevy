@@ -148,6 +148,8 @@ pub fn enemy_movement(mut enemy_query: Query<(&mut Transform, &Enemy)>, time: Re
 pub fn update_enemy_direction(
     mut enemy_query: Query<(&Transform, &mut Enemy)>,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
 ) {
     let window: &Window = window_query.get_single().unwrap();
     let half_enemy_size: f32 = ENEMY_SIZE / 2.0;
@@ -157,12 +159,31 @@ pub fn update_enemy_direction(
     let y_max: f32 = window.height() - half_enemy_size;
 
     for (transform, mut enemy) in enemy_query.iter_mut() {
+        let mut direction_changed: bool = false;
+
         let translation: Vec3 = transform.translation;
         if translation.x < x_min || translation.x > x_max {
             enemy.direction.x *= -1.0;
+            direction_changed = true;
         }
         if translation.y < y_min || translation.y > y_max {
             enemy.direction.y *= -1.0;
+            direction_changed = true;
+        }
+
+        // play sfx if direction change
+        if direction_changed {
+            let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
+            let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
+            let sound_effect = if random::<f32>() > 0.5 {
+                sound_effect_1
+            } else {
+                sound_effect_2
+            };
+            commands.spawn(AudioBundle {
+                source: sound_effect,
+                ..default()
+            });
         }
     }
 }
@@ -171,26 +192,26 @@ fn confine_enemy_movement(
     mut enemy_query: Query<&mut Transform, With<Enemy>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
-        let window: &Window = window_query.get_single().unwrap();
-        let half_enemy_size: f32 = ENEMY_SIZE / 2.0;
-        let x_min: f32 = half_enemy_size;
-        let x_max: f32 = window.width() - half_enemy_size;
-        let y_min: f32 = half_enemy_size;
-        let y_max: f32 = window.height() - half_enemy_size;
+    let window: &Window = window_query.get_single().unwrap();
+    let half_enemy_size: f32 = ENEMY_SIZE / 2.0;
+    let x_min: f32 = half_enemy_size;
+    let x_max: f32 = window.width() - half_enemy_size;
+    let y_min: f32 = half_enemy_size;
+    let y_max: f32 = window.height() - half_enemy_size;
 
-        for mut transform in enemy_query.iter_mut() {
-            let mut translation: Vec3 = transform.translation;
-            if translation.x < x_min {
-                translation.x = x_min;
-            } else if translation.x > x_max {
-                translation.x = x_max;
-            }
-
-            if translation.y < y_min {
-                translation.y = y_min;
-            } else if translation.y > y_max {
-                translation.y = y_max;
-            }
-            transform.translation = translation;
+    for mut transform in enemy_query.iter_mut() {
+        let mut translation: Vec3 = transform.translation;
+        if translation.x < x_min {
+            translation.x = x_min;
+        } else if translation.x > x_max {
+            translation.x = x_max;
         }
+
+        if translation.y < y_min {
+            translation.y = y_min;
+        } else if translation.y > y_max {
+            translation.y = y_max;
+        }
+        transform.translation = translation;
     }
+}
