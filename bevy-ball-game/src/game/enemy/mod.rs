@@ -30,6 +30,7 @@ impl Plugin for EnemyPlugin {
                 )
                     .run_if(in_state(AppState::Game))
                     .run_if(in_state(SimulationState::Running)),
-            );
+            )
+            .add_systems(OnExit(AppState::Game), despawn_enemies);
     }
 }
